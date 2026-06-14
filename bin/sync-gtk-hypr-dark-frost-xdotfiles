@@ -1,0 +1,623 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — GTK/Nemo frost theme.
+set -euo pipefail
+
+colors="${HOME}/.cache/ambxst/colors.json"
+theme_cfg="${HOME}/.config/ambxst/config/theme.json"
+# shellcheck source=/dev/null
+source "${HOME}/.local/share/hypr-dark-frost-xdotfiles/font-stack.sh"
+hdf_x_font_stack
+gtk3_dir="${HOME}/.config/gtk-3.0"
+gtk4_dir="${HOME}/.config/gtk-4.0"
+icon_theme="Papirus-Dark"
+ui_font="${HDF_X_UI_FONT}"
+ui_font_size="${HDF_X_UI_SIZE}"
+font_name="${HDF_X_GTK_FONT}"
+folders_script="${HOME}/.local/bin/papirus-folders"
+
+if [[ ! -f "$colors" ]]; then
+    echo "Shell colors not found at $colors" >&2
+    exit 1
+fi
+
+read_color() {
+    jq -r ".[\"$1\"] // empty" "$colors"
+}
+
+bg="$(read_color background)"
+fg="$(read_color overBackground)"
+surface="$(read_color surface)"
+surface_high="$(read_color surfaceContainerHigh)"
+surface_highest="$(read_color surfaceContainerHighest)"
+surface_container="$(read_color surfaceContainer)"
+surface_dim="$(read_color surfaceDim)"
+primary="$(read_color primary)"
+on_primary="$(read_color overPrimary)"
+outline="$(read_color outlineVariant)"
+muted="$(read_color overSurfaceVariant)"
+
+# Frosted glass — match Kitty (0.88) via GTK rgba backgrounds + Hyprland blur
+hex_to_rgba() {
+    local hex="${1#\#}"
+    local a="$2"
+    printf "rgba(%d, %d, %d, %s)" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}" "$a"
+}
+
+frost_main="$(hex_to_rgba "$bg" 0.88)"
+frost_surface="$(hex_to_rgba "$surface" 0.86)"
+frost_surface_high="$(hex_to_rgba "$surface_high" 0.92)"
+frost_surface_highest="$(hex_to_rgba "$surface_highest" 0.94)"
+frost_menu="$(hex_to_rgba "$surface_high" 0.95)"
+frost_outline="$(hex_to_rgba "$outline" 0.45)"
+frost_toolbar="$(hex_to_rgba "$surface" 0.90)"
+frost_status="$(hex_to_rgba "$surface" 0.88)"
+
+if [[ ! -x "$folders_script" ]]; then
+    curl -fsSL \
+        "https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-folders/master/papirus-folders" \
+        -o "$folders_script" 2>/dev/null || true
+    chmod +x "$folders_script" 2>/dev/null || true
+fi
+
+# Grey Papirus folders (no bright blue) — only when not already applied (avoids sudo).
+if [[ -x "$folders_script" ]]; then
+    papirus_grey=false
+    for theme_dir in \
+        "/usr/share/icons/Papirus-Dark/48x48/places/folder.svg" \
+        "${HOME}/.local/share/icons/Papirus-Dark/48x48/places/folder.svg" \
+        "${HOME}/.icons/Papirus-Dark/48x48/places/folder.svg"; do
+        if [[ -L "$theme_dir" ]] && [[ "$(readlink "$theme_dir")" == *grey* ]]; then
+            papirus_grey=true
+            break
+        fi
+    done
+    if [[ "$papirus_grey" == false ]]; then
+        "$folders_script" -C grey --theme Papirus-Dark 2>/dev/null || true
+        "$folders_script" -C grey --theme Papirus 2>/dev/null || true
+    fi
+fi
+
+mkdir -p "$gtk3_dir" "$gtk4_dir" "${HOME}/.local/bin"
+
+for dir in "$gtk3_dir" "$gtk4_dir"; do
+    if [[ ! -w "$dir" ]]; then
+        echo "Error: ${dir} is not writable (likely owned by root)." >&2
+        echo "Run: ~/.local/bin/fix-gtk-perms-hypr-dark-frost-xdotfiles" >&2
+        echo "Do not run sync-gtk-hypr-dark-frost-xdotfiles with sudo." >&2
+        exit 1
+    fi
+done
+
+if [[ -e "${gtk3_dir}/gtk.css" && ! -w "${gtk3_dir}/gtk.css" ]]; then
+    echo "Error: ${gtk3_dir}/gtk.css is not writable." >&2
+    echo "Run: ~/.local/bin/fix-gtk-perms-hypr-dark-frost-xdotfiles" >&2
+    exit 1
+fi
+
+cat >"${gtk3_dir}/gtk.css" <<EOF
+/* Hypr Dark Frost X Nemo theme — sync-gtk-hypr-dark-frost-xdotfiles */
+
+@define-color accent_color ${primary};
+@define-color accent_fg_color ${on_primary};
+@define-color accent_bg_color ${primary};
+@define-color window_bg_color ${bg};
+@define-color window_fg_color ${fg};
+@define-color headerbar_bg_color ${surface};
+@define-color headerbar_fg_color ${fg};
+@define-color headerbar_backdrop_color ${surface};
+@define-color view_bg_color ${bg};
+@define-color view_fg_color ${fg};
+@define-color sidebar_bg_color ${surface};
+@define-color sidebar_fg_color ${muted};
+@define-color sidebar_border_color ${outline};
+
+/* ---- Window shell (frosted) ---- */
+.nemo-window {
+  background-color: transparent;
+  color: ${fg};
+}
+
+/* Kill the legacy menu bar completely */
+.nemo-window menubar,
+.nemo-window > box > menubar {
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background-color: transparent;
+}
+
+.nemo-window menubar > menuitem {
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  font-size: 0;
+  opacity: 0;
+}
+
+.nemo-window .nemo-window-pane,
+.nemo-window paned,
+.nemo-window grid {
+  background-color: transparent;
+}
+
+/* ---- Unified header: nav + path in one band ---- */
+.nemo-window toolbar.horizontal.primary-toolbar {
+  background-color: ${frost_toolbar};
+  border-bottom: 1px solid ${frost_outline};
+  box-shadow: none;
+  padding: 6px 10px;
+  min-height: 40px;
+}
+
+.nemo-window toolbar.horizontal.primary-toolbar separator {
+  background-color: ${frost_outline};
+  min-width: 1px;
+  margin: 6px 4px;
+}
+
+.nemo-window toolbar.horizontal.primary-toolbar button,
+.nemo-window toolbar.horizontal.primary-toolbar toolbutton {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 8px;
+  padding: 5px;
+  min-width: 30px;
+  min-height: 30px;
+  color: ${muted};
+}
+
+.nemo-window toolbar.horizontal.primary-toolbar button:hover,
+.nemo-window toolbar.horizontal.primary-toolbar toolbutton:hover {
+  background-color: ${frost_surface_highest};
+  color: ${fg};
+}
+
+.nemo-window toolbar.horizontal.primary-toolbar button:checked,
+.nemo-window toolbar.horizontal.primary-toolbar toolbutton:checked {
+  background-color: ${frost_surface_high};
+  color: ${primary};
+}
+
+/* Path breadcrumbs — flat, no pill tabs */
+.nemo-window .path-bar.linked > button,
+.nemo-window .path-bar-box button,
+.nemo-window .nemo-pathbar-button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 6px;
+  color: ${muted};
+  padding: 4px 6px;
+  font-weight: 400;
+  min-height: 0;
+}
+
+.nemo-window .path-bar.linked > button:hover,
+.nemo-window .nemo-pathbar-button:hover {
+  background-color: ${frost_surface_highest};
+  color: ${fg};
+}
+
+.nemo-window .path-bar.linked > button:checked,
+.nemo-window .path-bar.linked > button:last-child,
+.nemo-window .nemo-pathbar-button:checked {
+  background: transparent;
+  color: ${fg};
+  font-weight: 600;
+}
+
+/* ---- Sidebar ---- */
+.nemo-window .sidebar scrolledwindow.frame.nemo-places-sidebar {
+  background-color: ${frost_surface};
+  border: none;
+  border-right: 1px solid ${frost_outline};
+}
+
+.nemo-window .sidebar viewport.frame box.vertical treeview.view.places-treeview {
+  background-color: transparent;
+  color: ${muted};
+  padding: 6px 4px;
+  -GtkTreeView-horizontal-separator: 0;
+  -GtkTreeView-vertical-separator: 2;
+}
+
+.nemo-window .sidebar viewport.frame box.vertical treeview.view.places-treeview:selected {
+  background-color: ${frost_surface_highest};
+  color: ${fg};
+  border-radius: 8px;
+}
+
+.nemo-window .sidebar viewport.frame box.vertical treeview.view.places-treeview:not(:selected):hover {
+  background-color: ${frost_surface_high};
+  color: ${fg};
+  border-radius: 8px;
+}
+
+.nemo-window .sidebar .view,
+.nemo-window .sidebar treeview header button {
+  background-color: transparent;
+  color: ${muted};
+  border: none;
+}
+
+/* ---- Main file list (list + icon views) ---- */
+.nemo-window .view,
+.nemo-window iconview,
+.nemo-window treeview.view,
+.nemo-window .nemo-inactive-pane .view,
+.nemo-window .nemo-inactive-pane iconview {
+  background-color: ${frost_main};
+  color: ${fg};
+  padding: 4px 0;
+}
+
+.nemo-window treeview.view {
+  -GtkTreeView-grid-line-color: ${frost_outline};
+  -GtkTreeView-grid-line-width: 1;
+}
+
+.nemo-window treeview.view:selected,
+.nemo-window treeview.view:selected:focus {
+  background-color: ${frost_surface_high};
+  color: ${fg};
+  border-radius: 0;
+}
+
+.nemo-window treeview.view row:hover {
+  background-color: ${frost_surface};
+}
+
+.nemo-window treeview.view row:selected {
+  background-color: ${frost_surface_high};
+  color: ${fg};
+  box-shadow: inset 3px 0 0 0 ${primary};
+}
+
+/* Icon view — subtle selection */
+.nemo-window .nemo-canvas-item {
+  padding: 10px;
+}
+
+.nemo-window .nemo-canvas-item:selected,
+.nemo-window iconview:selected,
+.nemo-window .view:selected {
+  background-color: ${frost_surface_highest};
+  color: ${fg};
+  border-radius: 10px;
+  outline: 1px solid ${frost_outline};
+  outline-offset: -1px;
+}
+
+.nemo-window .nemo-canvas-item:active {
+  background-color: ${frost_surface_high};
+}
+
+/* ---- Status bar: minimal ---- */
+.nemo-window .statusbar,
+.nemo-window .nemo-statusbar,
+.nemo-window .gtkstatusbar {
+  background-color: ${frost_status};
+  color: ${muted};
+  border-top: 1px solid ${frost_outline};
+  padding: 3px 12px;
+  font-size: 11px;
+  min-height: 24px;
+}
+
+.nemo-window .statusbar .scale,
+.nemo-window .statusbar scale,
+.nemo-window .statusbar button {
+  min-height: 18px;
+  min-width: 18px;
+}
+
+/* ---- Scrollbars ---- */
+.nemo-window scrollbar {
+  background: transparent;
+  border: none;
+}
+
+.nemo-window scrollbar slider {
+  background-color: ${frost_surface_high};
+  border-radius: 99px;
+  min-width: 6px;
+  min-height: 6px;
+  margin: 2px;
+}
+
+.nemo-window scrollbar slider:hover {
+  background-color: ${frost_surface_highest};
+}
+
+/* ---- Menus (more opaque for readability) ---- */
+.nemo-window popover.background,
+.nemo-window menu {
+  background-color: ${frost_menu};
+  color: ${fg};
+  border: 1px solid ${frost_outline};
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.nemo-window menuitem:hover {
+  background-color: ${frost_surface_highest};
+  border-radius: 8px;
+}
+
+/* Hide client-side window controls — use Super+drag / Super+C */
+headerbar.titlebar button.titlebutton,
+.titlebar button.titlebutton,
+.csd headerbar.titlebar button.titlebutton {
+  opacity: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  -gtk-icon-shadow: none;
+}
+
+headerbar.titlebar .titlebutton.close,
+headerbar.titlebar .titlebutton.maximize,
+headerbar.titlebar .titlebutton.minimize {
+  opacity: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* GTK4 / libadwaita — spacing only valid in gtk-4.0/gtk.css */
+windowcontrols,
+headerbar .windowcontrols {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+windowcontrols button,
+headerbar .windowcontrols button {
+  opacity: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+/* Other GTK apps */
+.header-bar {
+  background-color: ${surface};
+  color: ${fg};
+  border-bottom: 1px solid ${outline};
+  box-shadow: none;
+}
+
+button {
+  border-radius: 8px;
+}
+
+menu,
+popover.background {
+  background-color: ${surface_high};
+  color: ${fg};
+  border: 1px solid ${outline};
+  border-radius: 12px;
+}
+
+/* ---- GTK file chooser (portal Open Folder / Save) ---- */
+filechooser {
+  background-color: ${frost_main};
+  min-width: 880px;
+  min-height: 560px;
+}
+
+filechooser .sidebar {
+  min-width: 168px;
+  background-color: ${frost_surface};
+  border-right: 1px solid ${frost_outline};
+}
+
+filechooser placessidebar row {
+  padding: 7px 10px;
+  border-radius: 10px;
+  margin: 2px 8px;
+}
+
+filechooser placessidebar row:selected {
+  background-color: ${frost_surface_highest};
+  color: ${fg};
+}
+
+filechooser .path-bar-box,
+filechooser .path-bar {
+  background-color: ${frost_toolbar};
+  border-bottom: 1px solid ${frost_outline};
+  padding: 6px 10px;
+}
+
+filechooser .dialog-action-box,
+filechooser .dialog-action-area {
+  padding: 10px 16px;
+  background-color: ${frost_surface};
+  border-top: 1px solid ${frost_outline};
+}
+
+filechooser treeview.view {
+  background-color: ${frost_main};
+  padding: 4px 8px;
+}
+
+filechooser treeview.view:selected {
+  background-color: ${frost_surface_highest};
+  color: ${fg};
+}
+
+filechooser headerbar {
+  background-color: ${frost_toolbar};
+  border-bottom: 1px solid ${frost_outline};
+  min-height: 40px;
+}
+
+filechooser button {
+  padding: 6px 14px;
+  margin: 0 4px;
+}
+
+dialog {
+  border-radius: 16px;
+}
+
+/* ---- Message / auth dialogs (Electron GTK fallback) ---- */
+messagedialog,
+.message-dialog,
+window.dialog.message {
+  background-color: ${frost_surface};
+  min-width: 420px;
+}
+
+messagedialog .dialog-vbox,
+messagedialog .message-dialog-content {
+  padding: 20px 24px;
+}
+
+messagedialog label,
+messagedialog .dialog-message {
+  color: ${fg};
+  font-family: "${ui_font}";
+  font-size: ${ui_font_size}px;
+}
+
+messagedialog label.title,
+messagedialog .dialog-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: ${fg};
+}
+
+messagedialog .dialog-action-box,
+messagedialog .dialog-action-area {
+  padding: 12px 16px 16px;
+  background-color: ${frost_surface};
+  border-top: 1px solid ${frost_outline};
+}
+
+messagedialog button,
+.message-dialog button {
+  padding: 8px 16px;
+  min-height: 36px;
+  border-radius: 10px;
+  font-family: "${ui_font}";
+  font-size: ${ui_font_size}px;
+  font-weight: 500;
+}
+
+messagedialog button.suggested-action,
+messagedialog button.default {
+  background-color: ${primary};
+  color: ${bg};
+  border: 1px solid ${outline};
+}
+
+messagedialog button:not(.suggested-action):not(.default) {
+  background-color: ${surface_high};
+  color: ${fg};
+  border: 1px solid ${outline};
+}
+
+messagedialog button:hover {
+  background-color: ${surface_highest};
+}
+EOF
+
+# GTK4: ~/.config/gtk-4.0/gtk.css is often a symlink to adw-gtk3-dark — keep it.
+# Hypr Dark Frost X overrides for Nemo/portals/Firefox GTK3 live in gtk-3.0/gtk.css only.
+gtk4_css="${gtk4_dir}/gtk.css"
+if [[ -f "$gtk4_css" && ! -L "$gtk4_css" && -w "$gtk4_css" ]]; then
+    cp "${gtk3_dir}/gtk.css" "$gtk4_css"
+    cat >>"$gtk4_css" <<'EOF'
+
+/* GTK4-only properties (invalid in GTK3) */
+windowcontrols,
+headerbar .windowcontrols {
+  spacing: 0;
+}
+
+filechooser .sidebar {
+  max-width: 200px;
+}
+
+messagedialog,
+.message-dialog,
+window.dialog.message {
+  max-width: 520px;
+}
+
+messagedialog .dialog-vbox,
+messagedialog .message-dialog-content {
+  spacing: 12px;
+}
+EOF
+fi
+
+for dir in "$gtk3_dir" "$gtk4_dir"; do
+    if [[ ! -w "$dir" ]]; then
+        echo "Warning: skipping ${dir}/settings.ini (not writable)" >&2
+        continue
+    fi
+    cat >"${dir}/settings.ini" <<EOF
+[Settings]
+gtk-theme-name=adw-gtk3-dark
+gtk-icon-theme-name=${icon_theme}
+gtk-font-name=${font_name}
+gtk-application-prefer-dark-theme=1
+gtk-button-images=0
+gtk-menu-images=0
+gtk-enable-animations=1
+gtk-primary-button-warps-slider=0
+gtk-cursor-theme-name=default
+EOF
+done
+
+apply_nemo_prefs() {
+    gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark' 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface icon-theme "${icon_theme}" 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface font-name "${font_name}" 2>/dev/null || true
+
+    # Layout: list view, no menu bar, slim chrome
+    gsettings set org.nemo.window-state start-with-menu-bar false 2>/dev/null || true
+    gsettings set org.nemo.window-state start-with-toolbar true 2>/dev/null || true
+    gsettings set org.nemo.window-state start-with-status-bar true 2>/dev/null || true
+    gsettings set org.nemo.window-state start-with-location-bar true 2>/dev/null || true
+    gsettings set org.nemo.window-state start-with-sidebar true 2>/dev/null || true
+    gsettings set org.nemo.window-state sidebar-width 200 2>/dev/null || true
+
+    gsettings set org.nemo.preferences always-use-browser true 2>/dev/null || true
+    gsettings set org.nemo.preferences default-folder-viewer 'list-view' 2>/dev/null || true
+    gsettings set org.nemo.preferences inherit-folder-viewer true 2>/dev/null || true
+    gsettings set org.nemo.preferences show-image-thumbnails true 2>/dev/null || true
+    gsettings set org.nemo.preferences show-directory-item-counts 'never' 2>/dev/null || true
+    gsettings set org.nemo.preferences show-full-path-titles false 2>/dev/null || true
+    gsettings set org.nemo.preferences show-location-entry false 2>/dev/null || true
+    gsettings set org.nemo.preferences disable-menu-warning true 2>/dev/null || true
+    gsettings set org.nemo.preferences sort-directories-first true 2>/dev/null || true
+    gsettings set org.nemo.preferences default-sort-order 'name' 2>/dev/null || true
+    gsettings set org.nemo.preferences tooltips-in-list-view true 2>/dev/null || true
+    gsettings set org.nemo.preferences tooltips-in-icon-view false 2>/dev/null || true
+
+    # Toolbar: navigation + search + view toggle only
+    for key in show-previous-icon-toolbar show-next-icon-toolbar show-up-icon-toolbar \
+        show-search-icon-toolbar show-icon-view-icon-toolbar show-list-view-icon-toolbar; do
+        gsettings set "org.nemo.preferences" "$key" true 2>/dev/null || true
+    done
+    for key in show-compact-view-icon-toolbar show-edit-icon-toolbar show-home-icon-toolbar \
+        show-computer-icon-toolbar show-new-folder-icon-toolbar show-reload-icon-toolbar \
+        show-open-in-terminal-toolbar show-show-thumbnails-toolbar show-toggle-extra-pane-toolbar; do
+        gsettings set "org.nemo.preferences" "$key" false 2>/dev/null || true
+    done
+}
+
+apply_nemo_prefs
+
+echo "Updated Nemo/GTK theme (${icon_theme}, frosted glass, list view)"

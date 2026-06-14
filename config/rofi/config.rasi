@@ -1,0 +1,132 @@
+@import "hypr-dark-frost-xdotfiles-colors.rasi"
+
+configuration {
+    show-icons: true;
+    display-drun: "";
+    display-run: "";
+    display-window: "";
+    display-combi: "";
+    drun-display-format: "{name}";
+    window-format: "{w} · {c}";
+
+    font: "Adwaita Sans 14";
+    terminal: "kitty";
+
+    width: 40em;
+    lines: 6;
+    columns: 1;
+    fixed-num-lines: false;
+
+    sorting-method: "fzf";
+    matching: "fuzzy";
+    hide-scrollbar: true;
+}
+
+window {
+    transparency: "real";
+    location: north;
+    anchor: north;
+    y-offset: 12%;
+    width: 40em;
+    border: 1px;
+    border-color: @hdf-x-outline;
+    border-radius: 14px;
+    background-color: @hdf-x-surface;
+    padding: 0;
+}
+
+mainbox {
+    background-color: transparent;
+    children: [ "inputbar", "listview" ];
+    spacing: 0;
+    border: 0;
+    padding: 6px;
+}
+
+inputbar {
+    background-color: transparent;
+    text-color: @hdf-x-primary;
+    border: 0 0 1px 0;
+    border-color: @hdf-x-outline;
+    border-radius: 0;
+    padding: 10px 12px;
+    spacing: 0;
+    children: [ "entry" ];
+}
+
+entry {
+    background-color: transparent;
+    text-color: @hdf-x-primary;
+    placeholder: "Search";
+    placeholder-color: @hdf-x-muted;
+    cursor: text;
+}
+
+listview {
+    background-color: transparent;
+    columns: 1;
+    lines: 6;
+    spacing: 2px;
+    cycle: false;
+    dynamic: true;
+    scrollbar: false;
+    border: 0;
+    border-color: transparent;
+    padding: 6px 0 2px 0;
+}
+
+element {
+    background-color: transparent;
+    text-color: @hdf-x-primary;
+    border-radius: 8px;
+    padding: 6px 10px;
+    spacing: 10px;
+    border: 0;
+}
+
+element normal.normal {
+    background-color: transparent;
+    text-color: @hdf-x-primary;
+}
+
+element normal.active {
+    background-color: transparent;
+    text-color: @hdf-x-primary;
+}
+
+element alternate.normal {
+    background-color: transparent;
+    text-color: @hdf-x-primary;
+}
+
+element selected.normal {
+    background-color: @hdf-x-surface-highest;
+    text-color: @hdf-x-primary;
+}
+
+element selected.active {
+    background-color: @hdf-x-surface-highest;
+    text-color: @hdf-x-primary;
+}
+
+element-icon {
+    background-color: transparent;
+    size: 20px;
+    text-color: inherit;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: inherit;
+    vertical-align: 0.5;
+}
+
+element-info {
+    background-color: transparent;
+    text-color: @hdf-x-muted;
+    vertical-align: 0.5;
+}
+
+prompt, textbox-prompt-colon, mode-switcher, button {
+    enabled: false;
+}

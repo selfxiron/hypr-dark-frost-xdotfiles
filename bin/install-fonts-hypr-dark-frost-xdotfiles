@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — install SF Pro fonts.
+set -euo pipefail
+
+aur_helper=""
+for candidate in yay paru; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        aur_helper="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$aur_helper" ]]; then
+    echo "Need an AUR helper (yay or paru) to install SF Pro." >&2
+    echo "Install manually, then run: ~/.local/bin/sync-fonts-hypr-dark-frost-xdotfiles" >&2
+    echo "  yay -S apple-fonts" >&2
+    exit 1
+fi
+
+echo "Installing Apple fonts (SF Pro Text/Display + SF Mono) via AUR..."
+"$aur_helper" -S --needed --noconfirm apple-fonts
+
+fc-cache -f
+"${HOME}/.local/bin/sync-fonts-hypr-dark-frost-xdotfiles"
+
+echo ""
+echo "Done. Log out/in or restart apps. Reload Hypr Dark Frost X for shell fonts."

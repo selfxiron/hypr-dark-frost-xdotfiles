@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — VS Code launcher.
+set -euo pipefail
+
+code_bin="/usr/bin/code-oss"
+if [[ ! -x "$code_bin" ]]; then
+    code_bin="/usr/bin/code"
+fi
+if [[ ! -x "$code_bin" ]]; then
+    echo "VS Code is not installed. Run: sudo pacman -S code" >&2
+    exit 1
+fi
+
+"${HOME}/.local/bin/sync-vscode-hypr-dark-frost-xdotfiles" >/dev/null 2>&1 || true
+"${HOME}/.local/bin/ensure-gnome-keyring" >/dev/null 2>&1 || true
+
+exec "$code_bin" "$@"

@@ -1,0 +1,399 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — Firefox new tab + chrome.
+set -euo pipefail
+
+colors="${HOME}/.cache/ambxst/colors.json"
+theme_cfg="${HOME}/.config/ambxst/config/theme.json"
+# shellcheck source=/dev/null
+source "${HOME}/.local/share/hypr-dark-frost-xdotfiles/font-stack.sh"
+
+read_color() {
+    jq -r ".[\"$1\"] // empty" "$colors"
+}
+
+find_firefox_profile() {
+    local base dir path
+    for base in \
+        "${XDG_CONFIG_HOME:-$HOME/.config}/mozilla/firefox" \
+        "${HOME}/.mozilla/firefox"; do
+        [[ -d "$base" ]] || continue
+        if [[ -f "${base}/profiles.ini" ]]; then
+            path="$(awk -F= '
+                /^\[Install/ { in_install=1; next }
+                /^\[/ { in_install=0 }
+                in_install && /^Default=/ { print $2; exit }
+            ' "${base}/profiles.ini")"
+            if [[ -n "$path" && -d "${base}/${path}" ]]; then
+                echo "${base}/${path}"
+                return 0
+            fi
+            path="$(awk -F= '/^Path=.*default-release/{print $2; exit}' "${base}/profiles.ini")"
+            if [[ -n "$path" && -d "${base}/${path}" ]]; then
+                echo "${base}/${path}"
+                return 0
+            fi
+        fi
+        dir="$(find "$base" -maxdepth 1 -type d -name '*.default-release' | head -1)"
+        if [[ -n "$dir" ]]; then
+            echo "$dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+html_escape() {
+    sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
+}
+
+reset_firefox() {
+    local profile prefs
+    profile="$(find_firefox_profile)" || {
+        rm -f "${HOME}/.local/bin/firefox"
+        rm -f "${HOME}/.local/share/applications/firefox.desktop"
+        rm -rf "${HOME}/.local/share/hypr-dark-frost-xdotfiles/firefox"
+        echo "Removed Hypr Dark Frost X Firefox files (no profile found)."
+        return 0
+    }
+
+    prefs="${profile}/prefs.js"
+    rm -f "${profile}/user.js" "${profile}/hypr-dark-frost-xdotfiles-newtab.html"
+    rm -rf "${profile}/chrome"
+    rm -rf "${HOME}/.local/share/hypr-dark-frost-xdotfiles/firefox"
+
+    if [[ -f "$prefs" ]]; then
+        sed -i \
+            -e '/^user_pref("browser\.newtab\.url"/d' \
+            -e '/^user_pref("browser\.newtabpage\.enabled", false)/d' \
+            -e '/^user_pref("browser\.startup\.homepage"/d' \
+            -e '/^user_pref("browser\.startup\.page", 1)/d' \
+            -e '/^user_pref("browser\.startup\.homepage_override\.mstone", "ignore")/d' \
+            "$prefs"
+    fi
+
+    echo "Firefox reset to stock prefs (bookmarks/extensions kept)."
+    echo "Fully quit Firefox, then run: sync-firefox-hypr-dark-frost-xdotfiles"
+}
+
+sync_firefox() {
+    if [[ ! -f "$colors" ]]; then
+        echo "Shell colors not found at $colors" >&2
+        exit 1
+    fi
+
+    local profile start_page file_url
+    profile="$(find_firefox_profile)" || {
+        echo "No Firefox profile found. Open Firefox once, then re-run." >&2
+        exit 1
+    }
+
+    local bg fg surface surface_high muted outline primary
+    bg="$(read_color background)"
+    fg="$(read_color overBackground)"
+    surface="$(read_color surface)"
+    surface_high="$(read_color surfaceContainerHigh)"
+    muted="$(read_color overSurfaceVariant)"
+    outline="$(read_color outlineVariant)"
+    primary="$(read_color primary)"
+
+    hdf_x_font_stack
+
+    local ui_font mono_font ui_size chrome_ui_size tab_height nav_height
+    ui_font="${HDF_X_UI_FONT}"
+    mono_font="${HDF_X_MONO_FONT}"
+    ui_size="${HDF_X_UI_SIZE}"
+    chrome_ui_size="${HDF_X_CHROME_SIZE}"
+    tab_height=$(( chrome_ui_size + 19 ))
+    nav_height=$(( chrome_ui_size + 23 ))
+
+    local sys_user sys_os sys_kernel sys_uptime sys_wm sys_packages sys_shell
+    sys_user="$(whoami | html_escape)"
+    sys_os="Arch Linux $(uname -m | html_escape)"
+    sys_kernel="$(uname -r | html_escape)"
+    sys_uptime="$(uptime -p 2>/dev/null | sed 's/^up //' | html_escape || echo "unknown")"
+    sys_wm="Hyprland"
+    if command -v hyprctl >/dev/null 2>&1; then
+        sys_wm="Hyprland $(hyprctl version 2>/dev/null | head -1 | awk '{print $2}' | html_escape || true)"
+    fi
+    sys_packages="$(pacman -Q 2>/dev/null | wc -l | tr -d ' ')"
+    sys_shell="$(basename "${SHELL:-bash}" | html_escape)"
+
+    start_page="${profile}/hypr-dark-frost-xdotfiles-newtab.html"
+    file_url="file://${start_page}"
+
+    cat >"$start_page" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Hypr Dark Frost X · Firefox</title>
+  <style>
+    :root {
+      --bg: ${bg};
+      --fg: ${fg};
+      --surface: ${surface};
+      --surface-high: ${surface_high};
+      --muted: ${muted};
+      --outline: ${outline};
+      --primary: ${primary};
+      --ui: "${ui_font}", system-ui, sans-serif;
+      --mono: "${mono_font}", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--ui);
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 32px;
+    }
+    .wrap {
+      width: min(920px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    h1 {
+      text-align: center;
+      font-size: clamp(1.1rem, 2.5vw, 1.55rem);
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    h2 {
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 12px;
+    }
+    .tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      text-decoration: none;
+      color: var(--fg);
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+    .tile:hover {
+      transform: translateY(-3px);
+      border-color: var(--primary);
+      background: var(--surface-high);
+    }
+    .tile img { width: 36px; height: 36px; border-radius: 8px; }
+    .tile span { font-size: 0.78rem; color: var(--muted); text-align: center; }
+    .search-form {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      min-height: 52px;
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 999px;
+    }
+    .search-form:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
+    }
+    .search-form img { width: 20px; height: 20px; opacity: 0.85; }
+    .search-form input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--fg);
+      font: inherit;
+      font-size: 1rem;
+    }
+    .search-form input::placeholder { color: var(--muted); }
+    .sys-box {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      padding: 18px 20px;
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+    .sys-box .label { color: var(--primary); display: inline-block; min-width: 5.5rem; }
+    .links-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px 18px;
+    }
+    .links-row a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+    }
+    .links-row a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Arch Linux · Hypr Dark Frost X</h1>
+    <section>
+      <h2>Quick Access</h2>
+      <div class="quick-grid">
+        <a class="tile" href="https://github.com/"><img src="https://www.google.com/s2/favicons?domain=github.com&amp;sz=64" alt=""><span>GitHub</span></a>
+        <a class="tile" href="https://www.reddit.com/"><img src="https://www.google.com/s2/favicons?domain=reddit.com&amp;sz=64" alt=""><span>Reddit</span></a>
+        <a class="tile" href="https://wiki.archlinux.org/"><img src="https://www.google.com/s2/favicons?domain=wiki.archlinux.org&amp;sz=64" alt=""><span>Arch Wiki</span></a>
+        <a class="tile" href="https://www.youtube.com/"><img src="https://www.google.com/s2/favicons?domain=youtube.com&amp;sz=64" alt=""><span>YouTube</span></a>
+        <a class="tile" href="https://bbs.archlinux.org/"><img src="https://www.google.com/s2/favicons?domain=archlinux.org&amp;sz=64" alt=""><span>Arch Forums</span></a>
+        <a class="tile" href="https://gitlab.com/"><img src="https://www.google.com/s2/favicons?domain=gitlab.com&amp;sz=64" alt=""><span>GitLab</span></a>
+      </div>
+    </section>
+    <form class="search-form" action="https://duckduckgo.com/" method="get">
+      <img src="https://www.google.com/s2/favicons?domain=duckduckgo.com&amp;sz=64" alt="">
+      <input name="q" type="search" placeholder="Search with DuckDuckGo…" autofocus autocomplete="off" spellcheck="false">
+    </form>
+    <section>
+      <h2>System Info</h2>
+      <div class="sys-box">
+        <div><span class="label">User:</span> ${sys_user}</div>
+        <div><span class="label">OS:</span> ${sys_os}</div>
+        <div><span class="label">Kernel:</span> ${sys_kernel}</div>
+        <div><span class="label">Uptime:</span> ${sys_uptime}</div>
+        <div><span class="label">WM:</span> ${sys_wm}</div>
+        <div><span class="label">Packages:</span> ${sys_packages}</div>
+        <div><span class="label">Shell:</span> ${sys_shell}</div>
+      </div>
+    </section>
+    <section>
+      <h2>Daily Links</h2>
+      <div class="links-row">
+        <a href="https://news.ycombinator.com/">Hacker News</a>
+        <a href="https://distrowatch.com/">DistroWatch</a>
+        <a href="https://www.theguardian.com/international">The Guardian</a>
+        <a href="https://techcrunch.com/">TechCrunch</a>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
+EOF
+
+    mkdir -p "${profile}/chrome"
+    cat >"${profile}/chrome/userChrome.css" <<EOF
+/* Hypr Dark Frost X Firefox — compact chrome (sync-firefox-hypr-dark-frost-xdotfiles) */
+:root {
+  --hdf-x-chrome-font: ${chrome_ui_size}px;
+  --hdf-x-tab-height: ${tab_height}px;
+  --hdf-x-nav-height: ${nav_height}px;
+}
+
+#TabsToolbar .tab-label,
+#TabsToolbar .tabbrowser-tab,
+#TabsToolbar .tab-content {
+  font-size: var(--hdf-x-chrome-font) !important;
+  line-height: 1.2 !important;
+}
+
+.tabbrowser-tab {
+  min-height: var(--hdf-x-tab-height) !important;
+  max-height: var(--hdf-x-tab-height) !important;
+}
+
+#nav-bar,
+#nav-bar * {
+  font-size: var(--hdf-x-chrome-font) !important;
+}
+
+#urlbar,
+#urlbar-input,
+.urlbar-input-container,
+#searchbar,
+#searchbar .searchbar-textbox {
+  font-size: var(--hdf-x-chrome-font) !important;
+  min-height: calc(var(--hdf-x-nav-height) - 6px) !important;
+}
+
+#nav-bar {
+  min-height: var(--hdf-x-nav-height) !important;
+}
+
+#PersonalToolbar,
+#PersonalToolbar * {
+  font-size: var(--hdf-x-chrome-font) !important;
+}
+
+toolbarbutton .toolbarbutton-text,
+toolbar .toolbarbutton-1 .toolbarbutton-text {
+  font-size: var(--hdf-x-chrome-font) !important;
+}
+
+menupopup,
+panel {
+  font-size: var(--hdf-x-chrome-font) !important;
+}
+EOF
+
+    cat >"${profile}/user.js" <<EOF
+// Hypr Dark Frost X Firefox — sync-firefox-hypr-dark-frost-xdotfiles (regenerated each sync)
+user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+user_pref("browser.newtabpage.enabled", false);
+user_pref("browser.newtab.url", "${file_url}");
+user_pref("browser.startup.page", 1);
+user_pref("browser.startup.homepage", "${file_url}");
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+EOF
+
+    mkdir -p "${HOME}/.local/bin" "${HOME}/.local/share/applications"
+
+    cat >"${HOME}/.local/bin/firefox" <<'LAUNCHER'
+#!/usr/bin/env bash
+set -euo pipefail
+bin="/usr/lib/firefox/firefox"
+[[ -x "$bin" ]] || bin="$(command -v firefox || true)"
+[[ -x "$bin" ]] || { echo "Firefox not installed." >&2; exit 1; }
+"${HOME}/.local/bin/sync-firefox-hypr-dark-frost-xdotfiles" sync >/dev/null 2>&1 || true
+exec "$bin" "$@"
+LAUNCHER
+    chmod +x "${HOME}/.local/bin/firefox"
+
+    cat >"${HOME}/.local/share/applications/firefox.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Firefox
+Comment=Browse the Web
+GenericName=Web Browser
+Exec=${HOME}/.local/bin/firefox %u
+Icon=firefox
+StartupWMClass=firefox
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+DESKTOP
+
+    echo "Built Hypr Dark Frost X Firefox start page: ${start_page}"
+    echo "Fully quit Firefox, then launch: ~/.local/bin/firefox"
+}
+
+case "${1:-sync}" in
+    reset) reset_firefox ;;
+    sync)  sync_firefox ;;
+    *)
+        echo "Usage: sync-firefox-hypr-dark-frost-xdotfiles [reset|sync]" >&2
+        exit 1
+        ;;
+esac

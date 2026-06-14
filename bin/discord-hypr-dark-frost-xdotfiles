@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — Discord launcher.
+set -euo pipefail
+
+export ELECTRON_OZONE_PLATFORM_HINT=wayland
+
+"${HOME}/.local/bin/sync-discord-hypr-dark-frost-xdotfiles" >/dev/null 2>&1 || true
+
+exec /usr/bin/discord \
+    --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer \
+    --ozone-platform=wayland \
+    "$@"

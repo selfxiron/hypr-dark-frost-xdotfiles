@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Hypr Dark Frost X screenshots need this folder; xdg-user-dirs may be missing on minimal installs.
+set -euo pipefail
+
+dir="${HOME}/Pictures/Screenshots"
+mkdir -p "$dir"
+
+# Optional: set up standard XDG user dirs if the tool exists.
+if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+    xdg-user-dirs-update >/dev/null 2>&1 || true
+fi

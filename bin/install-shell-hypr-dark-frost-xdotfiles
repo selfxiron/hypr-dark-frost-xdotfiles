@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Install Fastfetch + Starship (Arch extra).
+set -euo pipefail
+
+sudo pacman -S --needed --noconfirm fastfetch starship
+"${HOME}/.local/bin/sync-shell-hypr-dark-frost-xdotfiles"
+
+echo "Open a new Kitty window to see Fastfetch + Starship."

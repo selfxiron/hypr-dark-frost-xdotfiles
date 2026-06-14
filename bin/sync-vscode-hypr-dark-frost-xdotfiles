@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — VS Code theme + settings.
+set -euo pipefail
+
+colors="${HOME}/.cache/ambxst/colors.json"
+theme_cfg="${HOME}/.config/ambxst/config/theme.json"
+# shellcheck source=/dev/null
+source "${HOME}/.local/share/hypr-dark-frost-xdotfiles/font-stack.sh"
+hdf_x_font_stack
+# Arch `code` package uses Code - OSS; Microsoft builds use Code.
+code_user_dirs=(
+    "${HOME}/.config/Code - OSS/User"
+    "${HOME}/.config/Code/User"
+)
+
+if [[ ! -f "$colors" ]]; then
+    echo "Shell colors not found at $colors" >&2
+    exit 1
+fi
+
+read_color() {
+    jq -r ".[\"$1\"] // empty" "$colors"
+}
+
+bg="$(read_color background)"
+fg="$(read_color overBackground)"
+surface="$(read_color surface)"
+surface_container="$(read_color surfaceContainer)"
+surface_high="$(read_color surfaceContainerHigh)"
+surface_highest="$(read_color surfaceContainerHighest)"
+surface_dim="$(read_color surfaceDim)"
+primary="$(read_color primary)"
+secondary="$(read_color secondary)"
+muted="$(read_color overSurfaceVariant)"
+outline="$(read_color outlineVariant)"
+error="$(read_color error)"
+error_container="$(read_color errorContainer)"
+
+mono_font="${HDF_X_MONO_FONT}"
+mono_size="${HDF_X_MONO_SIZE}"
+ui_font="${HDF_X_UI_FONT}"
+ui_size="${HDF_X_UI_SIZE}"
+
+theme_tmp="$(mktemp)"
+trap 'rm -f "$theme_tmp"' EXIT
+
+cat >"$theme_tmp" <<EOF
+{
+  "name": "Hypr Dark Frost X",
+  "type": "dark",
+  "colors": {
+    "focusBorder": "${outline}",
+    "foreground": "${fg}",
+    "disabledForeground": "${muted}",
+    "descriptionForeground": "${muted}",
+    "errorForeground": "${error}",
+    "icon.foreground": "${muted}",
+    "widget.border": "${outline}",
+    "widget.shadow": "#00000080",
+    "selection.background": "${surface_highest}",
+    "textLink.activeForeground": "${primary}",
+    "textLink.foreground": "${secondary}",
+    "textPreformat.foreground": "${secondary}",
+    "textBlockQuote.background": "${surface_container}",
+    "textBlockQuote.border": "${outline}",
+    "textCodeBlock.background": "${surface_container}",
+    "sash.hoverBorder": "${primary}",
+    "badge.background": "${surface_highest}",
+    "badge.foreground": "${fg}",
+    "activityBar.background": "${surface}",
+    "activityBar.foreground": "${fg}",
+    "activityBar.inactiveForeground": "${muted}",
+    "activityBar.border": "${outline}",
+    "activityBarBadge.background": "${primary}",
+    "activityBarBadge.foreground": "${bg}",
+    "sideBar.background": "${surface}",
+    "sideBar.foreground": "${fg}",
+    "sideBar.border": "${outline}",
+    "sideBarTitle.foreground": "${fg}",
+    "sideBarSectionHeader.background": "${surface_container}",
+    "sideBarSectionHeader.foreground": "${fg}",
+    "sideBarSectionHeader.border": "${outline}",
+    "list.activeSelectionBackground": "${surface_highest}",
+    "list.activeSelectionForeground": "${fg}",
+    "list.inactiveSelectionBackground": "${surface_high}",
+    "list.inactiveSelectionForeground": "${fg}",
+    "list.hoverBackground": "${surface_high}",
+    "list.hoverForeground": "${fg}",
+    "list.focusBackground": "${surface_highest}",
+    "list.focusForeground": "${fg}",
+    "list.highlightForeground": "${primary}",
+    "tree.indentGuidesStroke": "${outline}",
+    "editor.background": "${bg}",
+    "editor.foreground": "${fg}",
+    "editorLineNumber.foreground": "${muted}",
+    "editorLineNumber.activeForeground": "${secondary}",
+    "editorCursor.foreground": "${primary}",
+    "editor.selectionBackground": "${surface_highest}",
+    "editor.inactiveSelectionBackground": "${surface_high}",
+    "editor.lineHighlightBackground": "${surface_dim}",
+    "editorLineHighlight.border": "${outline}",
+    "editorIndentGuide.background1": "${outline}",
+    "editorIndentGuide.activeBackground1": "${muted}",
+    "editorWhitespace.foreground": "${outline}",
+    "editorWidget.background": "${surface_container}",
+    "editorWidget.foreground": "${fg}",
+    "editorWidget.border": "${outline}",
+    "editorSuggestWidget.background": "${surface_container}",
+    "editorSuggestWidget.border": "${outline}",
+    "editorSuggestWidget.foreground": "${fg}",
+    "editorSuggestWidget.selectedBackground": "${surface_highest}",
+    "editorHoverWidget.background": "${surface_container}",
+    "editorHoverWidget.border": "${outline}",
+    "editorGroupHeader.tabsBackground": "${surface}",
+    "editorGroupHeader.tabsBorder": "${outline}",
+    "editorGroup.border": "${outline}",
+    "editorGroup.dropBackground": "${surface_high}80",
+    "tab.activeBackground": "${bg}",
+    "tab.activeForeground": "${fg}",
+    "tab.inactiveBackground": "${surface}",
+    "tab.inactiveForeground": "${muted}",
+    "tab.border": "${outline}",
+    "tab.activeBorderTop": "${primary}",
+    "tab.hoverBackground": "${surface_high}",
+    "tab.unfocusedActiveBackground": "${surface_container}",
+    "tab.unfocusedInactiveBackground": "${surface}",
+    "titleBar.activeBackground": "${surface}",
+    "titleBar.activeForeground": "${fg}",
+    "titleBar.inactiveBackground": "${surface}",
+    "titleBar.inactiveForeground": "${muted}",
+    "titleBar.border": "${outline}",
+    "menubar.selectionBackground": "${surface_highest}",
+    "menubar.selectionForeground": "${fg}",
+    "menu.background": "${surface_container}",
+    "menu.foreground": "${fg}",
+    "menu.selectionBackground": "${surface_highest}",
+    "menu.selectionForeground": "${fg}",
+    "menu.separatorBackground": "${outline}",
+    "menu.border": "${outline}",
+    "statusBar.background": "${surface}",
+    "statusBar.foreground": "${muted}",
+    "statusBar.border": "${outline}",
+    "statusBar.debuggingBackground": "${error_container}",
+    "statusBar.debuggingForeground": "${fg}",
+    "statusBar.noFolderBackground": "${surface_container}",
+    "statusBarItem.activeBackground": "${surface_highest}",
+    "statusBarItem.hoverBackground": "${surface_high}",
+    "statusBarItem.remoteBackground": "${surface_highest}",
+    "statusBarItem.remoteForeground": "${fg}",
+    "panel.background": "${surface}",
+    "panel.border": "${outline}",
+    "panelTitle.activeBorder": "${primary}",
+    "panelTitle.activeForeground": "${fg}",
+    "panelTitle.inactiveForeground": "${muted}",
+    "terminal.background": "${bg}",
+    "terminal.foreground": "${fg}",
+    "terminal.ansiBlack": "${surface}",
+    "terminal.ansiRed": "${error}",
+    "terminal.ansiGreen": "#98c379",
+    "terminal.ansiYellow": "#e5c07b",
+    "terminal.ansiBlue": "${secondary}",
+    "terminal.ansiMagenta": "#c678dd",
+    "terminal.ansiCyan": "#56b6c2",
+    "terminal.ansiWhite": "${fg}",
+    "terminal.ansiBrightBlack": "${outline}",
+    "terminal.ansiBrightRed": "${error}",
+    "terminal.ansiBrightGreen": "#98c379",
+    "terminal.ansiBrightYellow": "#e5c07b",
+    "terminal.ansiBrightBlue": "${primary}",
+    "terminal.ansiBrightMagenta": "#c678dd",
+    "terminal.ansiBrightCyan": "#56b6c2",
+    "terminal.ansiBrightWhite": "${primary}",
+    "input.background": "${surface_container}",
+    "input.foreground": "${fg}",
+    "input.border": "${outline}",
+    "input.placeholderForeground": "${muted}",
+    "inputOption.activeBorder": "${primary}",
+    "dropdown.background": "${surface_container}",
+    "dropdown.foreground": "${fg}",
+    "dropdown.border": "${outline}",
+    "dialog.background": "${surface_container}",
+    "dialog.foreground": "${fg}",
+    "dialog.border": "${outline}",
+    "dialog.shadow": "#00000066",
+    "button.background": "${primary}",
+    "button.foreground": "${bg}",
+    "button.hoverBackground": "${secondary}",
+    "button.border": "${outline}",
+    "button.separator": "${outline}",
+    "button.secondaryBackground": "${surface_high}",
+    "button.secondaryForeground": "${fg}",
+    "button.secondaryHoverBackground": "${surface_highest}",
+    "button.secondaryBorder": "${outline}",
+    "scrollbar.shadow": "#00000000",
+    "scrollbarSlider.background": "${outline}80",
+    "scrollbarSlider.hoverBackground": "${muted}80",
+    "scrollbarSlider.activeBackground": "${secondary}80",
+    "minimap.background": "${bg}",
+    "minimap.selectionHighlight": "${surface_highest}",
+    "minimap.errorHighlight": "${error}",
+    "minimap.warningHighlight": "#e5c07b",
+    "breadcrumb.background": "${bg}",
+    "breadcrumb.foreground": "${muted}",
+    "breadcrumb.focusForeground": "${fg}",
+    "breadcrumb.activeSelectionForeground": "${primary}",
+    "breadcrumbPicker.background": "${surface_container}",
+    "notificationCenter.border": "${outline}",
+    "notificationCenterHeader.background": "${surface_container}",
+    "notificationCenterHeader.foreground": "${fg}",
+    "notifications.background": "${surface_container}",
+    "notifications.foreground": "${fg}",
+    "notifications.border": "${outline}",
+    "notificationsErrorIcon.foreground": "${error}",
+    "notificationsWarningIcon.foreground": "#e5c07b",
+    "notificationsInfoIcon.foreground": "${secondary}",
+    "pickerGroup.border": "${outline}",
+    "pickerGroup.foreground": "${fg}",
+    "quickInput.background": "${surface_container}",
+    "quickInput.foreground": "${fg}",
+    "quickInputTitle.background": "${surface_high}",
+    "keybindingLabel.background": "${surface_high}",
+    "keybindingLabel.foreground": "${fg}",
+    "keybindingLabel.border": "${outline}",
+    "settings.headerForeground": "${fg}",
+    "settings.modifiedItemIndicator": "${primary}",
+    "settings.dropdownBackground": "${surface_container}",
+    "settings.dropdownForeground": "${fg}",
+    "settings.dropdownBorder": "${outline}",
+    "settings.checkboxBackground": "${surface_container}",
+    "settings.checkboxForeground": "${fg}",
+    "settings.checkboxBorder": "${outline}",
+    "settings.textInputBackground": "${surface_container}",
+    "settings.textInputForeground": "${fg}",
+    "settings.textInputBorder": "${outline}",
+    "settings.numberInputBackground": "${surface_container}",
+    "settings.numberInputForeground": "${fg}",
+    "settings.numberInputBorder": "${outline}",
+    "gitDecoration.modifiedResourceForeground": "#e5c07b",
+    "gitDecoration.deletedResourceForeground": "${error}",
+    "gitDecoration.untrackedResourceForeground": "#98c379",
+    "gitDecoration.ignoredResourceForeground": "${muted}",
+    "gitDecoration.conflictingResourceForeground": "#c678dd"
+  },
+  "tokenColors": [
+    {
+      "scope": ["comment", "punctuation.definition.comment"],
+      "settings": { "foreground": "${muted}", "fontStyle": "italic" }
+    },
+    {
+      "scope": ["string", "constant.other.symbol"],
+      "settings": { "foreground": "#98c379" }
+    },
+    {
+      "scope": ["constant.numeric", "constant.language"],
+      "settings": { "foreground": "#e5c07b" }
+    },
+    {
+      "scope": ["keyword", "storage.type", "storage.modifier"],
+      "settings": { "foreground": "${primary}" }
+    },
+    {
+      "scope": ["entity.name.function", "support.function"],
+      "settings": { "foreground": "${secondary}" }
+    },
+    {
+      "scope": ["entity.name.type", "support.type", "support.class"],
+      "settings": { "foreground": "#56b6c2" }
+    },
+    {
+      "scope": ["variable", "variable.other"],
+      "settings": { "foreground": "${fg}" }
+    },
+    {
+      "scope": ["entity.name.tag", "markup.heading"],
+      "settings": { "foreground": "${error}" }
+    },
+    {
+      "scope": ["markup.italic"],
+      "settings": { "fontStyle": "italic" }
+    },
+    {
+      "scope": ["markup.bold"],
+      "settings": { "fontStyle": "bold" }
+    }
+  ]
+}
+EOF
+
+hdf_x_settings="$(cat <<EOF
+{
+  "window.titleBarStyle": "custom",
+  "window.controlsStyle": "hidden",
+  "window.customTitleBarVisibility": "auto",
+  "window.menuBarVisibility": "compact",
+  "window.commandCenter": false,
+  "window.dialogStyle": "custom",
+  "window.autoDetectColorScheme": false,
+  "workbench.colorTheme": "Hypr Dark Frost X",
+  "workbench.preferredDarkColorTheme": "Hypr Dark Frost X",
+  "workbench.preferredLightColorTheme": "Hypr Dark Frost X",
+  "workbench.fontAliasing": "antialiased",
+  "workbench.colorCustomizations": {
+    "[Hypr Dark Frost X]": {
+      "dialog.background": "${surface_container}",
+      "dialog.foreground": "${fg}",
+      "dialog.border": "${outline}",
+      "button.background": "${primary}",
+      "button.foreground": "${bg}",
+      "button.hoverBackground": "${secondary}",
+      "button.secondaryBackground": "${surface_high}",
+      "button.secondaryForeground": "${fg}",
+      "button.secondaryHoverBackground": "${surface_highest}",
+      "button.secondaryBorder": "${outline}",
+      "textPreformat.foreground": "${primary}",
+      "textCodeBlock.background": "${surface_high}",
+      "textCodeBlock.foreground": "${primary}"
+    }
+  },
+  "workbench.iconTheme": "vs-seti",
+  "workbench.startupEditor": "none",
+  "workbench.welcome.enabled": false,
+  "workbench.tree.indent": 16,
+  "workbench.editor.showTabs": "multiple",
+  "workbench.activityBar.location": "default",
+  "editor.fontFamily": "${mono_font}",
+  "editor.fontSize": ${mono_size},
+  "editor.codeLensFontFamily": "${ui_font}",
+  "editor.fontLigatures": true,
+  "editor.cursorBlinking": "smooth",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.minimap.enabled": true,
+  "editor.minimap.renderCharacters": false,
+  "editor.lineNumbers": "on",
+  "editor.renderLineHighlight": "line",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  "editor.smoothScrolling": true,
+  "terminal.integrated.fontFamily": "${mono_font}",
+  "terminal.integrated.fontSize": ${mono_size},
+  "terminal.integrated.gpuAcceleration": "on",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "files.simpleDialog.enable": true,
+  "explorer.compactFolders": false,
+  "breadcrumbs.enabled": true,
+  "security.workspace.trust.enabled": false
+}
+EOF
+)"
+
+for code_user_dir in "${code_user_dirs[@]}"; do
+    mkdir -p "${code_user_dir}/themes"
+    cp "$theme_tmp" "${code_user_dir}/themes/hypr-dark-frost-xdotfiles-color-theme.json"
+    code_settings="${code_user_dir}/settings.json"
+
+    if [[ -f "$code_settings" ]]; then
+        tmp="$(mktemp)"
+        jq --argjson hdf_x "$hdf_x_settings" '. * $hdf_x' "$code_settings" >"$tmp"
+        mv "$tmp" "$code_settings"
+    else
+        mkdir -p "$code_user_dir"
+        echo "$hdf_x_settings" | jq '.' >"$code_settings"
+    fi
+done
+
+# Electron flags go in electron42-flags.conf (read by /usr/bin/code-oss), not code-flags.conf.
+mkdir -p "${HOME}/.config"
+cat >"${HOME}/.config/electron42-flags.conf" <<'EOF'
+# VS Code (electron42) — Wayland; no native titlebar buttons (match Cursor).
+--enable-features=UseOzonePlatform
+--disable-features=WaylandWindowDecorations
+--ozone-platform-hint=auto
+EOF
+# code-flags.conf is passed to code.mjs; keep empty so VS Code doesn't warn on Electron flags.
+: >"${HOME}/.config/code-flags.conf"
+
+# Tell VS Code to use gnome-keyring (Secret Service) instead of auto-detecting a DE keyring.
+vscode_argv="${HOME}/.vscode-oss/argv.json"
+if [[ -f "$vscode_argv" ]] && ! grep -q '"password-store"' "$vscode_argv"; then
+    sed -i '/^}$/i\\t"password-store": "gnome-libsecret",' "$vscode_argv"
+fi
+
+echo "Updated VS Code Hypr Dark Frost X theme + settings (Code - OSS + Code)"
+echo "Frost: hyprland code-frosted rule (0.88 opacity on class Code|code-oss) — run: hyprctl reload"

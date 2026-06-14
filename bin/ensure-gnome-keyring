@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Start gnome-keyring Secret Service for VS Code, Cursor, browsers, etc. on Hyprland.
+set -euo pipefail
+
+if ! command -v gnome-keyring-daemon >/dev/null 2>&1; then
+    echo "gnome-keyring is not installed. Run: sudo pacman -S gnome-keyring" >&2
+    exit 0
+fi
+
+secret_service_ready() {
+    busctl --user call org.freedesktop.secrets \
+        /org/freedesktop/secrets \
+        org.freedesktop.DBus.Introspectable Introspect \
+        >/dev/null 2>&1
+}
+
+if secret_service_ready; then
+    exit 0
+fi
+
+if systemctl --user is-system-running >/dev/null 2>&1; then
+    systemctl --user enable gnome-keyring-daemon.socket gnome-keyring-daemon.service >/dev/null 2>&1 || true
+    systemctl --user enable --now gnome-keyring-daemon.socket >/dev/null 2>&1 || true
+    systemctl --user enable --now gnome-keyring-daemon.service >/dev/null 2>&1 || true
+    sleep 0.2
+    secret_service_ready && exit 0
+fi
+
+# Fallback when started before the user systemd session is fully up.
+eval "$(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh 2>/dev/null)" || true
+
+if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+    export SSH_AUTH_SOCK
+fi

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+bin="/usr/lib/firefox/firefox"
+[[ -x "$bin" ]] || bin="$(command -v firefox || true)"
+[[ -x "$bin" ]] || { echo "Firefox not installed." >&2; exit 1; }
+"${HOME}/.local/bin/sync-firefox-hypr-dark-frost-xdotfiles" sync >/dev/null 2>&1 || true
+exec "$bin" "$@"

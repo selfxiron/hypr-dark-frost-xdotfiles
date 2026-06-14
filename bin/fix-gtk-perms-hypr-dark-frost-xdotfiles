@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Fix GTK config dirs if they were accidentally created/changed as root.
+set -euo pipefail
+
+user="$(whoami)"
+for dir in \
+    "${HOME}/.config/gtk-3.0" \
+    "${HOME}/.config/gtk-4.0"; do
+    if [[ -e "$dir" ]]; then
+        sudo chown -R "${user}:${user}" "$dir"
+    fi
+done
+
+echo "Ownership fixed for gtk-3.0 and gtk-4.0."
+echo "Run: ~/.local/bin/sync-gtk-hypr-dark-frost-xdotfiles"

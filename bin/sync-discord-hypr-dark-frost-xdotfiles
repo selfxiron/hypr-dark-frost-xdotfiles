@@ -1,0 +1,417 @@
+#!/usr/bin/env bash
+# hypr-dark-frost-xdotfiles — Discord/Vencord theme.
+set -euo pipefail
+
+colors="${HOME}/.cache/ambxst/colors.json"
+discord_settings="${HOME}/.config/discord/settings.json"
+vencord_dir="${HOME}/.config/Vencord"
+vencord_settings="${vencord_dir}/settings/settings.json"
+vencord_theme="${vencord_dir}/themes/hypr-dark-frost-xdotfiles.theme.css"
+vencord_quickcss="${vencord_dir}/settings/quickCss.css"
+
+if [[ ! -f "$colors" ]]; then
+    echo "Shell colors not found at $colors" >&2
+    exit 1
+fi
+
+read_color() {
+    jq -r ".[\"$1\"] // empty" "$colors"
+}
+
+bg="$(read_color background)"
+fg="$(read_color overBackground)"
+surface="$(read_color surface)"
+surface_container="$(read_color surfaceContainer)"
+surface_high="$(read_color surfaceContainerHigh)"
+surface_highest="$(read_color surfaceContainerHighest)"
+primary="$(read_color primary)"
+secondary="$(read_color secondary)"
+muted="$(read_color overSurfaceVariant)"
+outline="$(read_color outlineVariant)"
+error="$(read_color error)"
+
+hex_lightness_hsl() {
+    local hex="${1#\#}"
+    local r=$((16#${hex:0:2}))
+    local g=$((16#${hex:2:2}))
+    local b=$((16#${hex:4:2}))
+    awk -v r="$r" -v g="$g" -v b="$b" 'BEGIN { printf "0 0%% %.1f%%", (r * 0.299 + g * 0.587 + b * 0.114) / 255 * 100 }'
+}
+
+hex_to_rgba() {
+    local hex="${1#\#}"
+    local a="$2"
+    printf "rgba(%d, %d, %d, %s)" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}" "$a"
+}
+
+hsl_bg="$(hex_lightness_hsl "$bg")"
+hsl_surface="$(hex_lightness_hsl "$surface")"
+hsl_container="$(hex_lightness_hsl "$surface_container")"
+hsl_high="$(hex_lightness_hsl "$surface_high")"
+hsl_highest="$(hex_lightness_hsl "$surface_highest")"
+hsl_outline="$(hex_lightness_hsl "$outline")"
+hsl_fg="$(hex_lightness_hsl "$fg")"
+hsl_muted="$(hex_lightness_hsl "$muted")"
+
+# Panel colors — solid; Hyprland window rule 0.88 provides frost (avoid double-fade).
+frost_chat="$bg"
+frost_side="$surface"
+frost_input="$surface_container"
+frost_float="$surface_high"
+frost_line="$(hex_to_rgba "$outline" 0.45)"
+
+mkdir -p "$vencord_dir/themes" "$(dirname "$discord_settings")"
+
+# Discord overwrites on exit — wrapper re-runs this before every launch.
+if [[ -f "$discord_settings" ]]; then
+    tmp="$(mktemp)"
+    jq --arg bg "$bg" '
+      .BACKGROUND_COLOR = $bg |
+      .chromiumSwitches = ((.chromiumSwitches // {}) + {"enable-transparent-visuals": ""})
+    ' "$discord_settings" >"$tmp"
+    mv "$tmp" "$discord_settings"
+else
+    echo "{\"BACKGROUND_COLOR\": \"$bg\", \"chromiumSwitches\": {\"enable-transparent-visuals\": \"\"}}" >"$discord_settings"
+fi
+
+cat >"$vencord_theme" <<EOF
+/**
+ * @name Hypr Dark Frost X
+ * @author sync-discord-hypr-dark-frost-xdotfiles
+ * @version 5.4.0
+ * @description Hypr Dark Frost X dark — solid panels; frost via Hyprland compositor opacity 0.88.
+ */
+
+/* Visual Refresh: disable opaque theme tint so rgba panels show wallpaper blur */
+:root,
+.theme-dark,
+.theme-midnight,
+.theme-light,
+.visual-refresh {
+  --theme-base-color: ${bg};
+  --theme-base-color-amount: 0%;
+  --theme-background-color: ${bg};
+  --theme-background-color-amount: 0%;
+}
+
+/* ---- Token block: all Discord theme class variants ---- */
+.theme-dark,
+.theme-midnight,
+.visual-refresh.theme-dark,
+.visual-refresh.theme-midnight,
+.visual-refresh {
+  --saturation-factor: 0;
+
+  --black-500: ${surface};
+  --black-500-hsl: ${hsl_surface};
+  --white-500-hsl: ${hsl_fg};
+
+  --primary-400-hsl: ${hsl_muted};
+  --primary-430-hsl: ${hsl_muted};
+  --primary-460-hsl: ${hsl_outline};
+  --primary-500-hsl: ${hsl_highest};
+  --primary-530-hsl: ${hsl_high};
+  --primary-560-hsl: ${hsl_high};
+  --primary-600-hsl: ${hsl_surface};
+  --primary-630-hsl: ${hsl_surface};
+  --primary-660-hsl: ${hsl_surface};
+  --primary-700-hsl: ${hsl_surface};
+  --primary-730-hsl: ${hsl_surface};
+  --primary-760-hsl: ${hsl_bg};
+  --primary-800-hsl: ${hsl_container};
+  --primary-830-hsl: ${hsl_container};
+  --primary-860-hsl: ${hsl_fg};
+
+  --dontuse-2-hsl: ${hsl_fg};
+  --dontuse-3-hsl: ${hsl_fg};
+  --dontuse-5-hsl: ${hsl_muted};
+  --dontuse-8-hsl: ${hsl_muted};
+  --dontuse-9-hsl: ${hsl_outline};
+  --dontuse-11-hsl: ${hsl_outline};
+  --dontuse-15-hsl: ${hsl_highest};
+  --dontuse-16-hsl: ${hsl_high};
+  --dontuse-17-hsl: ${hsl_surface};
+  --dontuse-18-hsl: ${hsl_container};
+  --dontuse-19-hsl: ${hsl_bg};
+  --dontuse-20-hsl: ${hsl_container};
+  --dontuse-21-hsl: ${hsl_high};
+  --dontuse-22-hsl: ${hsl_container};
+  --dontuse-23-hsl: ${hsl_bg};
+  --dontuse-24-hsl: ${hsl_high};
+  --dontuse-25-hsl: ${hsl_surface};
+  --dontuse-26-hsl: ${hsl_bg};
+
+  /* Two-tone hierarchy: chat vs chrome */
+  --app-bg: ${frost_chat};
+  --background-base-low: ${frost_chat};
+  --background-base-lower: ${frost_side};
+  --background-base-lowest: ${frost_side};
+
+  --background-primary: ${frost_chat};
+  --background-secondary: ${frost_side};
+  --background-secondary-alt: ${frost_side};
+  --background-tertiary: ${frost_input};
+  --background-accent: ${frost_input};
+  --background-floating: ${frost_float};
+  --background-nested-floating: ${frost_float};
+
+  --bg-base-primary: ${frost_chat};
+  --bg-base-secondary: ${frost_side};
+  --bg-base-tertiary: ${frost_input};
+  --bg-surface-raised: ${frost_input};
+  --bg-surface-overlay: ${frost_float};
+  --bg-surface-overlay-tmp: ${frost_float};
+  --bg-backdrop: ${frost_chat};
+  --blur-fallback: ${frost_chat};
+  --blur-fallback-pressed: ${frost_input};
+
+  --chat-background: ${frost_chat};
+  --home-background: ${frost_chat};
+  --chat-input-container-background: ${frost_input};
+
+  --card-primary-bg: ${frost_input};
+  --card-primary-pressed-bg: ${frost_float};
+  --card-secondary-bg: ${frost_input};
+  --card-secondary-pressed-bg: ${frost_float};
+  --card-gradient-bg: ${frost_input};
+  --card-gradient-pressed-bg: ${frost_float};
+
+  --redesign-activity-card-background: ${frost_input};
+  --redesign-activity-card-background-pressed: ${frost_float};
+  --redesign-activity-card-border: ${frost_line};
+
+  --channeltextarea-background: ${frost_input};
+  --input-background: ${frost_input};
+  --input-pressed-background: ${frost_float};
+
+  --background-modifier-hover: ${frost_input};
+  --background-modifier-selected: ${frost_float};
+  --background-modifier-active: ${frost_float};
+  --background-modifier-accent: ${frost_input};
+  --background-modifier-accent-2: ${frost_input};
+  --bg-mod-faint: ${frost_input};
+  --bg-mod-subtle: ${frost_input};
+  --bg-mod-strong: ${frost_float};
+
+  --border-faint: ${frost_line};
+  --border-subtle: ${frost_line};
+  --border-strong: ${frost_line};
+  --divider-strong: ${frost_line};
+
+  --scrollbar-thin-thumb: ${surface_highest};
+  --scrollbar-thin-track: transparent;
+  --scrollbar-auto-thumb: ${surface_high};
+  --scrollbar-auto-track: transparent;
+
+  --text-normal: ${fg};
+  --text-muted: ${muted};
+  --text-link: ${secondary};
+  --header-primary: ${fg};
+  --header-secondary: ${muted};
+  --channels-default: ${muted};
+  --interactive-normal: ${muted};
+  --interactive-hover: ${fg};
+  --interactive-active: ${primary};
+  --interactive-muted: ${outline};
+  --icon-primary: ${muted};
+  --channel-icon: ${muted};
+
+  --brand-500-hsl: ${hsl_muted};
+  --brand-560-hsl: ${hsl_outline};
+  --brand-600-hsl: ${hsl_high};
+  --brand-500: ${secondary};
+  --brand-560: ${outline};
+  --brand-600: ${surface_highest};
+  --accent-1: ${surface_high};
+  --accent-2: ${surface_container};
+  --accent-3: ${surface};
+  --accent-4: ${outline};
+  --accent-5: ${surface_highest};
+  --accent-text-color: ${fg};
+
+  --profile-body-background-color: ${frost_side};
+  --profile-gradient-primary-color: ${surface_container};
+  --profile-gradient-secondary-color: ${surface_high};
+  --profile-gradient-overlay-color: ${frost_chat};
+  --profile-gradient-button-color: ${surface_highest};
+  --profile-gradient-message-background-color: ${frost_input};
+
+  --redesign-button-primary-background: ${surface_highest};
+  --redesign-button-primary-text: ${bg};
+  --redesign-button-primary-border: ${outline};
+  --redesign-button-primary-background-hover: ${secondary};
+  --redesign-button-primary-background-active: ${outline};
+  --redesign-button-primary-alt-background: transparent;
+  --redesign-button-primary-alt-border: ${outline};
+  --redesign-button-primary-alt-text: ${fg};
+
+  --button-outline-brand-background: transparent;
+  --button-outline-brand-border: ${outline};
+  --button-outline-brand-text: ${fg};
+  --button-secondary-background: ${surface_highest};
+  --button-secondary-background-hover: ${surface_high};
+
+  --status-danger: ${error};
+  --status-warning: #e5c07b;
+  --status-positive: #98c379;
+
+  --modal-background: ${frost_float};
+  --modal-footer-background: ${frost_input};
+
+  --elevation-low: 0 1px 0 ${frost_line};
+  --elevation-medium: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --elevation-high: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Force unified sidebar tone (fixes black channel list vs grey chat) */
+.visual-refresh nav[class*="guilds"] [class*="scroller"],
+.visual-refresh [class*="guilds_"] [class*="scroller"],
+.visual-refresh [class*="sidebar_"],
+.visual-refresh [class*="sidebarList_"],
+.visual-refresh [class*="privateChannels_"],
+.visual-refresh [class*="sidebar_"] [class*="scroller"],
+.visual-refresh [class*="sidebarList_"] [class*="scroller"],
+.visual-refresh [class*="privateChannels_"] [class*="scroller"],
+.visual-refresh [class*="membersWrap_"],
+.visual-refresh [class*="userProfileSidebar_"],
+.visual-refresh [class*="userProfileOuter_"] {
+  background-color: ${frost_side} !important;
+}
+
+/* Chat canvas */
+.visual-refresh [class*="chatContent_"],
+.visual-refresh [class*="messagesWrapper_"],
+.visual-refresh [class*="pageBody_"],
+.visual-refresh [class*="messagesWrapper_"] [class*="scroller"] {
+  background-color: ${frost_chat} !important;
+}
+
+/* Inputs + bottom user panel */
+.visual-refresh [class*="panels_"],
+.visual-refresh [class*="channelTextArea_"],
+.visual-refresh [class*="scrollableContainer_"] {
+  background-color: ${frost_input} !important;
+}
+
+/* Profile banner — no user accent blue */
+.visual-refresh [class*="banner_"],
+[class*="banner"],
+[class*="profileBanner"] {
+  background: linear-gradient(135deg, ${surface_high}, ${surface_container}) !important;
+  background-color: ${surface_high} !important;
+}
+
+.visual-refresh [class*="banner_"] img,
+[class*="banner"] img {
+  opacity: 0.15 !important;
+}
+
+/* Column dividers */
+.visual-refresh [class*="sidebar_"],
+.visual-refresh [class*="page_"] {
+  border-right: 1px solid ${frost_line} !important;
+}
+
+.visual-refresh [class*="membersWrap_"],
+.visual-refresh [class*="userProfileSidebar_"] {
+  border-left: 1px solid ${frost_line} !important;
+}
+
+/* Popovers — frosted float layer */
+.visual-refresh [class*="popout_"],
+.visual-refresh [class*="modal_"],
+.visual-refresh [class*="contextMenu_"] {
+  background-color: ${frost_float} !important;
+  border: 1px solid ${frost_line} !important;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Hide window controls */
+[class*="winButtons"],
+[class*="winButtonsWithDivider"],
+[class*="systemBar"] > [class*="trailing"],
+[class*="-systemBar"] > [class*="-trailing"],
+[class*="-systemBar"][class*="-show"] > div:not([class*="leading"]) {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+EOF
+
+# QuickCSS loads after themes — high-priority overrides, live reload on save (Ctrl+S in editor).
+mkdir -p "$(dirname "$vencord_quickcss")"
+cat >"$vencord_quickcss" <<EOF
+/* Hypr Dark Frost X QuickCSS — solid panels; Hyprland discord-frosted rule handles blur. */
+
+.visual-refresh,
+.theme-dark,
+.theme-midnight {
+  --theme-base-color: ${bg} !important;
+  --theme-base-color-amount: 0% !important;
+  --theme-background-color-amount: 0% !important;
+  --saturation-factor: 0 !important;
+  --background-primary: ${frost_chat} !important;
+  --background-secondary: ${frost_side} !important;
+  --background-base-lowest: ${frost_side} !important;
+  --background-tertiary: ${frost_input} !important;
+  --chat-background: ${frost_chat} !important;
+  --blur-fallback: ${frost_chat} !important;
+  --blur-fallback-pressed: ${frost_input} !important;
+}
+
+/* Frost panels — solid (Hyprland 0.88 opacity applies frost) */
+.visual-refresh nav[class*="guilds"],
+.visual-refresh [class*="guilds_"],
+.visual-refresh [class*="sidebarList"],
+.visual-refresh [class*="sidebar_"],
+.visual-refresh [class*="privateChannels"],
+.visual-refresh [class*="membersWrap"],
+.visual-refresh [class*="userProfileSidebar"],
+.visual-refresh [class*="userProfileOuter"] {
+  background-color: ${frost_side} !important;
+}
+
+.visual-refresh [class*="chatContent"],
+.visual-refresh [class*="messagesWrapper"],
+.visual-refresh [class*="pageBody"],
+.visual-refresh [class*="subtitleContainer"] {
+  background-color: ${frost_chat} !important;
+}
+
+.visual-refresh [class*="panels_"],
+.visual-refresh [class*="channelTextArea"],
+.visual-refresh [class*="scrollableContainer"] {
+  background-color: ${frost_input} !important;
+}
+
+.visual-refresh [class*="popout"],
+.visual-refresh [class*="modal"] {
+  background-color: ${frost_float} !important;
+}
+
+.visual-refresh [class*="banner_"],
+[class*="banner"] {
+  background: linear-gradient(135deg, ${surface_high}, ${surface_container}) !important;
+}
+.visual-refresh [class*="banner_"] img { opacity: 0.12 !important; }
+
+.visual-refresh [class*="sidebar_"],
+.visual-refresh [class*="page_"] { border-right: 1px solid ${frost_line} !important; }
+.visual-refresh [class*="membersWrap"],
+.visual-refresh [class*="userProfileSidebar"] { border-left: 1px solid ${frost_line} !important; }
+EOF
+
+if [[ -f "$vencord_settings" ]]; then
+    tmp="$(mktemp)"
+    jq '
+      .useQuickCss = true |
+      .transparent = false |
+      .frameless = true |
+      .enabledThemes = ((.enabledThemes // []) | if index("hypr-dark-frost-xdotfiles.theme.css") then . else . + ["hypr-dark-frost-xdotfiles.theme.css"] end | unique)
+    ' "$vencord_settings" >"$tmp" && mv "$tmp" "$vencord_settings"
+fi
+
+echo "Updated Discord theme v5.4 (solid colors + Hyprland compositor frost)"
