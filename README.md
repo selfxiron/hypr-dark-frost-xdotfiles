@@ -9,7 +9,7 @@ I use [Ambxst](https://github.com/Axenide/Ambxst) as the shell. Colors and fonts
 Needs Arch, Hyprland, Ambxst, and `jq`. For fonts I pull SF Pro from the `apple-fonts` AUR package (optional). Fastfetch and Starship come from extra.
 
 ```bash
-git clone <repo-url> ~/Projects/hypr-dark-frost-xdotfiles
+git clone https://github.com/selfxiron/hypr-dark-frost-xdotfiles
 ~/Projects/hypr-dark-frost-xdotfiles/install.sh
 ~/.local/bin/install-shell-hypr-dark-frost-xdotfiles
 hyprctl reload
